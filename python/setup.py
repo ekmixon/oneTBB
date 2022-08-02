@@ -32,7 +32,7 @@ if any(i in os.environ for i in ["CC", "CXX"]):
         os.environ['CXX'] = os.environ['CC']
     if platform.system() == 'Linux':
         os.environ['LDSHARED'] = os.environ['CXX'] + " -shared"
-    print("Environment specifies CC=%s CXX=%s"%(os.environ['CC'], os.environ['CXX']))
+    print(f"Environment specifies CC={os.environ['CC']} CXX={os.environ['CXX']}")
 
 intel_compiler = os.getenv('CC', '') in ['icl', 'icpc', 'icc']
 try:
@@ -59,21 +59,35 @@ else:
     compile_flags = ['-std=c++11', '-Wno-unused-variable']
     tbb_lib_name = 'tbb'
 
-_tbb = Extension("tbb._api", ["tbb/api.i"],
-        include_dirs=[os.path.join(tbb_root, 'include')] if not use_compiler_tbb else [],
-        swig_opts   =['-c++', '-O', '-threads'] + (  # add '-builtin' later
-              ['-I' + os.path.join(tbb_root, 'include')] if not use_compiler_tbb else []),
-        extra_compile_args=compile_flags + tbb_flag,
-        extra_link_args=tbb_flag,
-        libraries   =([tbb_lib_name] if not use_compiler_tbb else []) +
-                     (['irml'] if platform.system() == "Linux" else []),
-        library_dirs=[ rundir,                                              # for custom-builds
-                       os.path.join(tbb_root, 'lib', 'intel64', 'gcc4.8'),  # for Linux
-                       os.path.join(tbb_root, 'lib'),                       # for MacOS
-                       os.path.join(tbb_root, 'lib', 'intel64', 'vc_mt'),   # for Windows
-                     ] if not use_compiler_tbb else [],
-        language    ='c++',
+_tbb = Extension(
+    "tbb._api",
+    ["tbb/api.i"],
+    include_dirs=[]
+    if use_compiler_tbb
+    else [os.path.join(tbb_root, 'include')],
+    swig_opts=(
+        ['-c++', '-O', '-threads']
+        + (
+            []
+            if use_compiler_tbb
+            else ['-I' + os.path.join(tbb_root, 'include')]
         )
+    ),
+    extra_compile_args=compile_flags + tbb_flag,
+    extra_link_args=tbb_flag,
+    libraries=([] if use_compiler_tbb else [tbb_lib_name])
+    + (['irml'] if platform.system() == "Linux" else []),
+    library_dirs=[]
+    if use_compiler_tbb
+    else [
+        rundir,  # for custom-builds
+        os.path.join(tbb_root, 'lib', 'intel64', 'gcc4.8'),  # for Linux
+        os.path.join(tbb_root, 'lib'),  # for MacOS
+        os.path.join(tbb_root, 'lib', 'intel64', 'vc_mt'),  # for Windows
+    ],
+    language='c++',
+)
+
 
 
 class TBBBuild(build):
